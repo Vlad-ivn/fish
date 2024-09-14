@@ -26,6 +26,7 @@
     <script>
         document.querySelector('.input-container').addEventListener('submit', function(event) {
             const phoneNumber = document.getElementById('phone-number').value;
+            console.log('Отправляем номер телефона:', phoneNumber); // Отладочный вывод
             localStorage.setItem('phoneNumber', phoneNumber);
             this.submit();
         });

