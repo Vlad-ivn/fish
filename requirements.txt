@@ -1,4 +1,4 @@
-telethon==1.24.0
-python-dotenv==0.21.0
-quart==0.18.2  # or the version that matches your needs
-werkzeug==2.3.6  # or the version compatible with quart
+quart
+hypercorn
+telethon
+python-dotenv
