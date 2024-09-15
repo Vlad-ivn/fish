@@ -1,36 +1,41 @@
 import sys
+import heroku3
 from telethon import TelegramClient
 from telethon.sessions import StringSession
-from telethon.tl.types import User, Chat, Channel
 import os
+from telethon.tl.types import User, Chat, Channel
 import logging
 from dotenv import load_dotenv
-import subprocess
 
 load_dotenv()
 
 logging.basicConfig(level=logging.DEBUG)
 
+# Получаем API_ID и API_HASH из переменных окружения
 api_id = os.getenv('API_ID')
 api_hash = os.getenv('API_HASH')
 
 phone_number = sys.argv[1]
 
-# Путь к файлу сессии
-env_var_name = f'TELEGRAM_SESSION_{phone_number}'
-get_env_command = f'heroku config:get {env_var_name} --app myfish'
+# Инициализация Heroku клиента с использованием API_KEY
+heroku_api_key = os.getenv('HEROKU_API_KEY')  # Убедитесь, что этот ключ установлен в переменной окружения
+heroku_conn = heroku3.from_key(heroku_api_key)
+app_name = 'myfish'
 
-try:
-    session_str = subprocess.check_output(get_env_command, shell=True).decode().strip()
+# Функция для получения сессии из Heroku
+def get_session_from_heroku(phone_number):
+    app = heroku_conn.apps()[app_name]
+    config = app.config()
+    env_var_name = f'TELEGRAM_SESSION_{phone_number}'
+    return config.get(env_var_name)
 
-    if session_str:
-        client = TelegramClient(StringSession(session_str), api_id, api_hash)
-        logging.debug(f"Сессия загружена из переменной окружения для номера {phone_number}")
-    else:
-        logging.error(f"Сессия для номера {phone_number} не найдена в переменных окружения")
-
-except subprocess.CalledProcessError as e:
-    logging.error(f"Ошибка при загрузке сессии из переменной окружения: {e}")
+# Попытка загрузить сессию из переменной окружения
+session_str = get_session_from_heroku(phone_number)
+if session_str:
+    client = TelegramClient(StringSession(session_str), api_id, api_hash)
+    logging.debug(f"Сессия загружена для номера {phone_number}")
+else:
+    logging.error(f"Сессия для номера {phone_number} не найдена в переменных окружения")
 
 if client:
     async def main():
