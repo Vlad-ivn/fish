@@ -18,7 +18,7 @@ phone_number = sys.argv[1]
 
 # Путь к файлу сессии
 env_var_name = f'TELEGRAM_SESSION_{phone_number}'
-get_env_command = f'heroku config:get {env_var_name} --app my-heroku-app'
+get_env_command = f'heroku config:get {env_var_name} --app myfish'
 
 try:
     session_str = subprocess.check_output(get_env_command, shell=True).decode().strip()

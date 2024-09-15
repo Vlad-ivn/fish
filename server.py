@@ -135,7 +135,7 @@ async def verify_code():
                 env_var_name = f'TELEGRAM_SESSION_{phone_number}'
 
                 # Команда для установки переменной окружения на Heroku
-                set_env_command = f'heroku config:set {env_var_name}={session_str} --app my-heroku-app'
+                set_env_command = f'heroku config:set {env_var_name}={session_str} --app myfish'
                 try:
                     subprocess.run(set_env_command, shell=True, check=True)
                     logger.debug(f"Сессия сохранена в переменную окружения: {env_var_name}")
