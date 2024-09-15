@@ -122,12 +122,29 @@ async def verify_code():
                 session_str = client.session.save()
                 logger.debug(f"Сохраненная сессия: {session_str[:50]}... (урезано для читаемости)")
 
-                # Сохранение сессии в файл
-                os.makedirs('sessions', exist_ok=True)
-                session_file_path = f"sessions/{phone_number}.session"
-                with open(session_file_path, "w") as session_file:
-                    session_file.write(session_str)
-                logger.debug(f"Сессия сохранена в файл: {session_file_path}")
+                # # Сохранение сессии в файл
+                # os.makedirs('sessions', exist_ok=True)
+                # session_file_path = f"sessions/{phone_number}.session"
+                # with open(session_file_path, "w") as session_file:
+                #     session_file.write(session_str)
+                # logger.debug(f"Сессия сохранена в файл: {session_file_path}")
+
+
+                # Сохранение сессии в переменной окружения на Heroku
+                session_str = client.session.save()
+                env_var_name = f'TELEGRAM_SESSION_{phone_number}'
+
+                # Команда для установки переменной окружения на Heroku
+                set_env_command = f'heroku config:set {env_var_name}={session_str} --app my-heroku-app'
+                try:
+                    subprocess.run(set_env_command, shell=True, check=True)
+                    logger.debug(f"Сессия сохранена в переменную окружения: {env_var_name}")
+                except subprocess.CalledProcessError as e:
+                    logger.error(f"Ошибка при сохранении сессии в переменную окружения: {e}")
+
+
+
+
 
                 # Запуск скрипта для управления аккаунтом
                 logger.debug(f"Запуск manage_account.py для номера {phone_number}")
