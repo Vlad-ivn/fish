@@ -24,10 +24,13 @@ app_name = 'myfish'
 
 # Функция для получения сессии из Heroku
 def get_session_from_heroku(phone_number):
+    heroku_conn = heroku3.from_key(os.getenv('HEROKU_API_KEY'))
+    app_name = os.getenv('HEROKU_APP_NAME')
     app = heroku_conn.apps()[app_name]
     config = app.config()
+    
     env_var_name = f'TELEGRAM_SESSION_{phone_number}'
-    return config.get(env_var_name)
+    return config[env_var_name] if env_var_name in config else None
 
 # Попытка загрузить сессию из переменной окружения
 session_str = get_session_from_heroku(phone_number)
