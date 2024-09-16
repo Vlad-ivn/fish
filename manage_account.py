@@ -28,7 +28,13 @@ def get_session_from_heroku(phone_number):
     config = app.config()
 
     env_var_name = f'TELEGRAM_SESSION_{phone_number}'
-    return config.get(env_var_name)
+
+    # Исправляем доступ к переменной окружения
+    if env_var_name in config:
+        return config[env_var_name]
+    else:
+        logging.error(f"Переменная окружения {env_var_name} не найдена.")
+        return None
 
 # Попытка загрузить сессию из переменной окружения
 session_str = get_session_from_heroku(phone_number)
@@ -47,7 +53,7 @@ if client:
 
             while True:
                 command = input("Введите команду (например, 'list' или 'send'): ").strip()
-                
+
                 if command == 'list':
                     dialogs = await client.get_dialogs()
                     for dialog in dialogs:
