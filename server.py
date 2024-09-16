@@ -60,17 +60,34 @@ async def send_code_with_delay(phone_number):
         logger.error(f"Ошибка при отправке кода на номер {phone_number}: {e}")
         raise
 
-# Функция для сохранения сессии в переменную окружения Heroku через API
 def set_heroku_config_var(phone_number, session_str):
     try:
+        # Подключение к Heroku с использованием API ключа
         heroku_conn = heroku3.from_key(heroku_api_key)
+        
+        # Получение приложения по имени
         app = heroku_conn.apps()[heroku_app_name]
-        env_var_name = f'TELEGRAM_SESSION_{phone_number}'
+        
+        # Очистка номера телефона от ненужных символов
+        clean_phone_number = phone_number.replace('+', '').replace('-', '').replace(' ', '')
+        env_var_name = f'TELEGRAM_SESSION_{clean_phone_number}'
+        
+        # Сохранение переменной окружения в Heroku
         app.config()[env_var_name] = session_str
+        
+        # Лог успешного сохранения
         logger.debug(f"Сессия сохранена в переменную окружения Heroku: {env_var_name}")
+    
+    except KeyError as ke:
+        # Ошибка при работе с ключами приложения или конфигурации
+        logger.error(f"Ошибка KeyError при доступе к переменной окружения Heroku: {ke}")
+        raise
+    
     except Exception as e:
+        # Общая ошибка с деталями исключения
         logger.error(f"Ошибка при сохранении сессии в переменную окружения через API Heroku: {e}")
         raise
+
 
 # Основная страница
 @app.route('/')
