@@ -97,6 +97,7 @@ def save_session_to_heroku(phone_number, session_str):
         logger.error(f"Ошибка при сохранении сессии в Heroku: {e}")
         raise
 
+
 # Основная страница
 @app.route('/')
 async def index():
