@@ -64,13 +64,16 @@ def get_session_from_heroku(phone_number):
         heroku_conn = heroku3.from_key(os.getenv('HEROKU_API_KEY'))
         app = heroku_conn.apps()[os.getenv('HEROKU_APP_NAME')]
         config = app.config()
-        
-        # Очистка номера телефона для создания корректного имени переменной окружения
-        clean_phone_number = phone_number.replace('+', '').replace('-', '').replace(' ', '')
-        env_var_name = f'TELEGRAM_SESSION_{clean_phone_number}'
 
+        # Очистка номера телефона для создания корректного имени переменной окружения
+        clean_phone_number = phone_number.replace('+', '').replace('-', '').replace(' ', '')    
         
+        env_var_name = f'TELEGRAM_SESSION_{clean_phone_number}'
+        
+        logger.debug(f"Ищем переменную окружения: {env_var_name}")
+
         if env_var_name in config:
+            logger.debug(f"Переменная окружения найдена: {config[env_var_name]}")
             return config[env_var_name]
         else:
             logger.error(f"Переменная окружения {env_var_name} не найдена.")
@@ -78,6 +81,7 @@ def get_session_from_heroku(phone_number):
     except Exception as e:
         logger.error(f"Ошибка при получении сессии из переменной окружения Heroku: {e}")
         raise
+
 
 # Функция для сохранения сессии в Heroku
 def save_session_to_heroku(phone_number, session_str):
