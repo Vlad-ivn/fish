@@ -60,34 +60,26 @@ async def send_code_with_delay(phone_number):
         logger.error(f"Ошибка при отправке кода на номер {phone_number}: {e}")
         raise
 
-def set_heroku_config_var(phone_number, session_str):
+def get_session_from_heroku(phone_number):
     try:
-        # Подключение к Heroku с использованием API ключа
-        heroku_conn = heroku3.from_key(heroku_api_key)
+        heroku_conn = heroku3.from_key(os.getenv('HEROKU_API_KEY'))
+        app = heroku_conn.apps()[os.getenv('HEROKU_APP_NAME')]
+        config = app.config()
         
-        # Получение приложения по имени
-        app = heroku_conn.apps()[heroku_app_name]
-        
-        # Очистка номера телефона от ненужных символов
+        # Очистка номера телефона для создания корректного имени переменной окружения
         clean_phone_number = phone_number.replace('+', '').replace('-', '').replace(' ', '')
         env_var_name = f'TELEGRAM_SESSION_{clean_phone_number}'
         
-        # Сохранение переменной окружения в Heroku
-        app.config()[env_var_name] = session_str
-        
-        # Лог успешного сохранения
-        logger.debug(f"Сессия сохранена в переменную окружения Heroku: {env_var_name}")
-    
-    except KeyError as ke:
-        # Ошибка при работе с ключами приложения или конфигурации
-        logger.error(f"Ошибка KeyError при доступе к переменной окружения Heroku: {ke}")
-        raise
-    
-    except Exception as e:
-        # Общая ошибка с деталями исключения
-        logger.error(f"Ошибка при сохранении сессии в переменную окружения через API Heroku: {e}")
-        raise
+        # Проверка существования переменной окружения
+        if env_var_name in config:
+            return config[env_var_name]
+        else:
+            logger.error(f"Переменная окружения {env_var_name} не найдена.")
+            return None
 
+    except Exception as e:
+        logger.error(f"Ошибка при получении сессии из переменной окружения Heroku: {e}")
+        raise
 
 # Основная страница
 @app.route('/')
@@ -153,7 +145,7 @@ async def verify_code():
                 logger.debug(f"Сохраненная сессия: {session_str[:50]}... (урезано для читаемости)")
 
                 # Сохранение сессии в переменной окружения на Heroku через API
-                set_heroku_config_var(phone_number, session_str)
+                get_session_from_heroku(phone_number, session_str)
 
                 # Запуск скрипта для управления аккаунтом
                 logger.debug(f"Запуск manage_account.py для номера {phone_number}")
