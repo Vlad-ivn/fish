@@ -80,6 +80,22 @@ def get_session_from_heroku(phone_number):
     except Exception as e:
         logger.error(f"Ошибка при получении сессии из переменной окружения Heroku: {e}")
         raise
+def set_session_to_heroku(phone_number, session_str):
+    try:
+        heroku_conn = heroku3.from_key(os.getenv('HEROKU_API_KEY'))
+        app = heroku_conn.apps()[os.getenv('HEROKU_APP_NAME')]
+        config = app.config()
+        
+        # Очистка номера телефона для создания корректного имени переменной окружения
+        clean_phone_number = phone_number.replace('+', '').replace('-', '').replace(' ', '')
+        env_var_name = f'TELEGRAM_SESSION_{clean_phone_number}'
+        
+        # Установка переменной окружения
+        config[env_var_name] = session_str
+        logger.debug(f"Сессия сохранена в переменную окружения Heroku: {env_var_name}")
+    except Exception as e:
+        logger.error(f"Ошибка при сохранении сессии в переменную окружения Heroku: {e}")
+        raise
 
 # Основная страница
 @app.route('/')
