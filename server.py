@@ -6,6 +6,7 @@ import logging
 from dotenv import load_dotenv
 import asyncio
 import heroku3  # Добавляем библиотеку для работы с Heroku API
+import subprocess
 
 # Загрузка переменных окружения
 load_dotenv()
