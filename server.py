@@ -68,6 +68,7 @@ def get_session_from_heroku(phone_number):
         # Очистка номера телефона для создания корректного имени переменной окружения
         clean_phone_number = phone_number.replace('+', '').replace('-', '').replace(' ', '')
         env_var_name = f'TELEGRAM_SESSION_{clean_phone_number}'
+
         
         if env_var_name in config:
             return config[env_var_name]
